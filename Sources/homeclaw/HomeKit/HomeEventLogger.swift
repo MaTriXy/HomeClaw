@@ -14,13 +14,6 @@ final class HomeEventLogger {
     private let logger = AppLogger.homekit
     private static let isoFormatter = ISO8601DateFormatter()
 
-    /// Webhook state
-    private var webhookFailureCount = 0
-    private var webhookCircuitOpen = false
-    private var webhookCircuitOpenedAt: Date?
-    private let webhookCircuitThreshold = 5
-    private let webhookCircuitResetInterval: TimeInterval = 60
-
     /// Configurable max file size in bytes (read from config on each rotation check).
     private var maxFileSize: UInt64 {
         UInt64(HomeClawConfig.shared.eventLogMaxSizeMB) * 1_048_576
@@ -260,8 +253,8 @@ final class HomeEventLogger {
             try? line.data(using: .utf8)?.write(to: eventsFile, options: .atomic)
         }
 
-        // Fire general webhook and check triggers
-        deliverWebhook(event)
+        // Only fire webhooks for events that match a configured trigger.
+        // No catch-all — untriggered events are logged but not pushed.
         evaluateTriggers(event)
     }
 
@@ -302,15 +295,17 @@ final class HomeEventLogger {
 
     /// Evaluates all enabled webhook triggers against an event.
     /// Matching triggers fire webhooks routed by action type (wake or agent).
-    private func evaluateTriggers(_ event: [String: Any]) {
+    /// Returns true if at least one trigger matched (so the caller can skip the general webhook).
+    @discardableResult
+    private func evaluateTriggers(_ event: [String: Any]) -> Bool {
         let config = HomeClawConfig.shared
         guard let webhook = config.webhookConfig,
               webhook.enabled,
               !webhook.url.isEmpty
-        else { return }
+        else { return false }
 
         let triggers = config.webhookTriggers
-        guard !triggers.isEmpty else { return }
+        guard !triggers.isEmpty else { return false }
 
         let baseURL = webhook.url.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let eventType = event["type"] as? String ?? ""
@@ -322,6 +317,7 @@ final class HomeEventLogger {
         let sceneID = scene?["id"] as? String
         let sceneName = scene?["name"] as? String
 
+        var matched = false
         for trigger in triggers where trigger.enabled {
             guard matchesTrigger(
                 trigger,
@@ -333,20 +329,25 @@ final class HomeEventLogger {
                 sceneName: sceneName
             ) else { continue }
 
+            matched = true
             let action = trigger.action ?? "wake"
             let text = trigger.message ?? formatEventText(event)
+            let isCritical = trigger.agentDeliver == true
 
             if action == "agent" {
                 guard let url = URL(string: baseURL + "/hooks/agent") else { continue }
                 let payload = buildAgentPayload(trigger: trigger, eventText: text)
-                sendWebhookPayload(payload, to: url, token: webhook.token, timeout: 30)
+                sendWebhookPayload(payload, to: url, token: webhook.token, timeout: 30, isCritical: isCritical)
             } else {
                 guard let url = URL(string: baseURL + "/hooks/wake") else { continue }
-                let mode = trigger.wakeMode ?? "now"
+                // Default wake mode is "next-heartbeat" (batched) for ambient events.
+                // Security triggers should set wakeMode: "now" explicitly.
+                let mode = trigger.wakeMode ?? "next-heartbeat"
                 let payload: [String: Any] = ["text": "[\(trigger.label)] \(text)", "mode": mode]
-                sendWebhookPayload(payload, to: url, token: webhook.token)
+                sendWebhookPayload(payload, to: url, token: webhook.token, isCritical: isCritical)
             }
         }
+        return matched
     }
 
     /// Builds the JSON payload for an agent webhook call.
@@ -416,41 +417,11 @@ final class HomeEventLogger {
 
     // MARK: - Webhook
 
-    private func deliverWebhook(_ event: [String: Any]) {
-        let config = HomeClawConfig.shared
-        guard let webhook = config.webhookConfig,
-              webhook.enabled,
-              !webhook.url.isEmpty,
-              let url = URL(string: webhook.url.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/hooks/wake")
-        else { return }
-
-        // Check event type filter
-        if let eventType = event["type"] as? String,
-           let allowedEvents = webhook.events,
-           !allowedEvents.isEmpty,
-           !allowedEvents.contains(eventType)
-        {
-            return
-        }
-
-        let text = formatEventText(event)
-        let payload: [String: Any] = ["text": text, "mode": "now"]
-        sendWebhookPayload(payload, to: url, token: webhook.token)
-    }
-
-    private func sendWebhookPayload(_ payload: [String: Any], to url: URL, token: String, timeout: TimeInterval = 10) {
-        // Circuit breaker (shared across general webhook and triggers)
-        if webhookCircuitOpen {
-            if let openedAt = webhookCircuitOpenedAt,
-               Date().timeIntervalSince(openedAt) > webhookCircuitResetInterval
-            {
-                webhookCircuitOpen = false
-                webhookFailureCount = 0
-                logger.info("Webhook circuit breaker reset")
-            } else {
-                return
-            }
-        }
+    private func sendWebhookPayload(
+        _ payload: [String: Any], to url: URL, token: String,
+        timeout: TimeInterval = 10, isCritical: Bool = false
+    ) {
+        guard WebhookCircuitBreaker.shared.shouldAllow(isCritical: isCritical) else { return }
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
 
@@ -460,37 +431,27 @@ final class HomeEventLogger {
         if !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        // Idempotency — lets the receiver deduplicate retried deliveries
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Request-ID")
+        request.setValue(Self.isoFormatter.string(from: Date()), forHTTPHeaderField: "X-Event-Timestamp")
         request.httpBody = body
         request.timeoutInterval = timeout
 
         let logger = self.logger
-        Task.detached { [weak self] in
+        Task.detached {
             do {
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-                    await self?.webhookFailed()
+                    await WebhookCircuitBreaker.shared.recordFailure()
                     logger.warning("Webhook returned \(http.statusCode)")
                 } else {
-                    await self?.webhookSucceeded()
+                    await WebhookCircuitBreaker.shared.recordSuccess()
                 }
             } catch {
-                await self?.webhookFailed()
+                await WebhookCircuitBreaker.shared.recordFailure()
                 logger.warning("Webhook delivery failed: \(error.localizedDescription)")
             }
         }
-    }
-
-    private func webhookFailed() {
-        webhookFailureCount += 1
-        if webhookFailureCount >= webhookCircuitThreshold {
-            webhookCircuitOpen = true
-            webhookCircuitOpenedAt = Date()
-            logger.warning("Webhook circuit breaker opened after \(self.webhookCircuitThreshold) failures")
-        }
-    }
-
-    private func webhookSucceeded() {
-        webhookFailureCount = 0
     }
 
     /// Extracts the home name from an event's `home` field.

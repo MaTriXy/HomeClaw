@@ -645,6 +645,11 @@ final class HomeKitManager: NSObject, Observable {
                 if let room = accessory.room {
                     dict["room"] = room.name
                 }
+                let homeDisplayName = AccessoryModel.computeHomeAppDisplayName(
+                    for: accessory, roomName: accessory.room?.name)
+                if homeDisplayName != accessory.name {
+                    dict["home_display_name"] = homeDisplayName
+                }
                 return dict
             }
         }
@@ -707,13 +712,25 @@ final class HomeKitManager: NSObject, Observable {
         }
         .sorted { ($0["name"] as? String ?? "") < ($1["name"] as? String ?? "") }
 
-        return [
+        var data: [String: Any] = [
             "ready": true,
             "selected_home": selectedHome.name,
             "homes": homesList,
             "scenes": scenesList,
             "rooms": roomsList,
         ]
+
+        let cb = WebhookCircuitBreaker.shared
+        if cb.state != .closed {
+            data["webhookCircuit"] = [
+                "state": cb.state.rawValue,
+                "softTripCount": cb.softTripCount,
+                "remainingSeconds": cb.remainingCooldownSeconds,
+                "totalDropped": cb.totalDroppedCount,
+            ] as [String: Any]
+        }
+
+        return data
     }
 
     /// Debounced push of menu data via notification. Coalesces rapid updates
@@ -761,6 +778,12 @@ final class HomeKitManager: NSObject, Observable {
                         state[name] = CharacteristicMapper.formatValue(
                             characteristic.value, for: characteristic.characteristicType
                         )
+                        // Subscribe to push notifications so the delegate callback fires
+                        // when the value changes externally (e.g. Home app, physical switch).
+                        // Without this, only security accessories (locks, doors) push updates.
+                        if !characteristic.isNotificationEnabled {
+                            try? await characteristic.enableNotification(true)
+                        }
                     }
                 }
             }
@@ -985,6 +1008,7 @@ extension HomeKitManager: HMHomeManagerDelegate {
 extension Notification.Name {
     static let homeKitStatusDidChange = Notification.Name("HomeKitStatusDidChange")
     static let homeKitMenuDataDidChange = Notification.Name("HomeKitMenuDataDidChange")
+    static let webhookCircuitStateDidChange = Notification.Name("WebhookCircuitStateDidChange")
 }
 
 // MARK: - HMAccessoryDelegate
