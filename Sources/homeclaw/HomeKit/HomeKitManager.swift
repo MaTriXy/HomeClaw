@@ -185,7 +185,7 @@ final class HomeKitManager: NSObject, Observable {
 
         // Dry run: validate without writing
         if dryRun {
-            let currentValue = hmCharacteristic.value.map { CharacteristicMapper.formatValue($0, for: hmCharacteristic) } ?? "unknown"
+            let currentValue = hmCharacteristic.value.map { CharacteristicMapper.formatValue($0, for: hmCharacteristic.characteristicType) } ?? "unknown"
             var result: [String: Any] = [
                 "dry_run": true,
                 "valid": true,
