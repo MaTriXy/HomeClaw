@@ -104,6 +104,7 @@ The stdio MCP server wraps `homeclaw-cli` and exposes these tools:
 | `homekit_scenes` | List, trigger, import, or delete scenes |
 | `homekit_device_map` | LLM-optimized device map with semantic types and aliases |
 | `homekit_events` | Query recent HomeKit events (characteristic changes, scene triggers, control actions) |
+| `homekit_webhook` | Manage webhook configuration: setup (configure + auto-test), test, reset circuit breaker, status |
 | `homekit_config` | View or update configuration (set active home, filtering) |
 
 ### Connecting an MCP Client
@@ -137,6 +138,9 @@ homeclaw-cli list --category thermostat
 homeclaw-cli set "Living Room Light" brightness 75
 homeclaw-cli set "Front Door Lock" lock_target_state locked
 homeclaw-cli set "Thermostat" target_temperature 72
+
+# Disambiguate when a characteristic exists on multiple services (e.g. bridged TVs)
+homeclaw-cli set "TV" active 0 --service-type 000000D8-0000-1000-8000-0026BB765291
 
 # Get detailed device info
 homeclaw-cli get "Kitchen Light" --json
@@ -174,6 +178,8 @@ homeclaw-cli events --type scene_triggered  # Filter by event type
 homeclaw-cli config --webhook-url "http://127.0.0.1:18789"
 homeclaw-cli config --webhook-token "your-secret-token"
 homeclaw-cli config --webhook-enabled true
+homeclaw-cli config --webhook-test           # Send test event, show HTTP response
+homeclaw-cli config --webhook-reset          # Reset circuit breaker without toggling
 ```
 
 ## Using with Claude Code
@@ -286,6 +292,8 @@ HomeClaw supports the full range of HomeKit accessory categories:
 | **Window Coverings** | target position (0-100%) |
 | **Switches & Outlets** | power on/off |
 | **Sensors** | motion, contact, temperature, humidity, light level, battery (all read-only) |
+| **Doorbells** | ring detection via input_event (single/double/long press), motion (read-only) |
+| **Programmable Switches** | button press detection (single/double/long press) (read-only) |
 | **Scenes** | trigger by name or UUID, import from JSON, delete by name |
 
 ### Scene Import Format
@@ -331,9 +339,9 @@ Five configuration tabs accessible from the menu bar:
 | Tab | Features |
 |-----|----------|
 | **HomeKit** | Connection status, home list with accessory and room counts, active home selector |
-| **Devices** | Filter mode (all/allowlist), per-device toggles grouped by room, search, bulk select/deselect |
+| **Devices** | Filter mode (all/allowlist), per-device toggles with category icons and state badges, grouped by room, search, bulk select/deselect |
 | **Event Log** | Enable/disable event logging, configure file rotation (size limit + backup count), view storage stats, purge logs, reveal in Finder |
-| **Webhook** | Configure webhook base URL + bearer token, select which scenes and accessories trigger webhooks using checkboxes grouped by room. Per-trigger delivery mode (Batched/Immediate) via segmented control. Agent routing available via CLI. Circuit breaker status banner when tripped. |
+| **Webhook** | Configure webhook base URL + bearer token, select which scenes and accessories trigger webhooks with category icons and state badges. Per-trigger delivery mode (Batched/Immediate). Circuit breaker banners with Reset button, delivery stats, and last HTTP status. Test webhook connectivity from CLI. |
 | **Integrations** | One-click install for Claude Desktop, Claude Code plugin detection, OpenClaw gateway setup |
 
 ### HomeKit
@@ -550,7 +558,7 @@ The webhook system includes a **tiered circuit breaker** that prevents runaway d
 |-------|---------|----------|----------|
 | **Normal** | -- | All webhooks delivered | -- |
 | **Soft Open** | 5 consecutive failures | Non-critical paused | Auto-resumes after 5 minutes |
-| **Hard Open** | 3 soft trips without any success | All non-critical stopped | Toggle webhook off→on in Settings |
+| **Hard Open** | 3 soft trips without any success | All non-critical stopped | Reset button in Settings, `--webhook-reset` CLI, or toggle off→on |
 
 **Critical triggers** (`agent_deliver: true`) always attempt delivery regardless of circuit state.
 
