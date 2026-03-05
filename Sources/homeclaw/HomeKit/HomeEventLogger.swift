@@ -293,6 +293,12 @@ final class HomeEventLogger {
 
     // MARK: - Triggers
 
+    /// Battery-related characteristics that should never trigger webhooks.
+    /// These change frequently and are not actionable state transitions.
+    private static let webhookExcludedCharacteristics: Set<String> = [
+        "battery_level", "low_battery",
+    ]
+
     /// Evaluates all enabled webhook triggers against an event.
     /// Matching triggers fire webhooks routed by action type (wake or agent).
     /// Returns true if at least one trigger matched (so the caller can skip the general webhook).
@@ -313,6 +319,18 @@ final class HomeEventLogger {
         let accessoryID = accessory?["id"] as? String
         let characteristic = event["characteristic"] as? String
         let value = event["value"] as? String
+
+        // Skip battery-related characteristics — they are not actionable state changes
+        if let characteristic, Self.webhookExcludedCharacteristics.contains(characteristic) {
+            let accessoryName = (event["accessory"] as? [String: Any])?["name"] as? String
+            WebhookEventLogger.shared.log(
+                outcome: .skipped,
+                accessoryName: accessoryName,
+                characteristic: characteristic,
+                reason: "battery_characteristic"
+            )
+            return false
+        }
         let scene = event["scene"] as? [String: Any]
         let sceneID = scene?["id"] as? String
         let sceneName = scene?["name"] as? String
@@ -334,17 +352,27 @@ final class HomeEventLogger {
             let text = trigger.message ?? formatEventText(event)
             let isCritical = trigger.agentDeliver == true
 
+            let accessoryName = (event["accessory"] as? [String: Any])?["name"] as? String
+
             if action == "agent" {
                 guard let url = URL(string: baseURL + "/hooks/agent") else { continue }
                 let payload = buildAgentPayload(trigger: trigger, eventText: text)
-                sendWebhookPayload(payload, to: url, token: webhook.token, timeout: 30, isCritical: isCritical)
+                sendWebhookPayload(
+                    payload, to: url, token: webhook.token, timeout: 30,
+                    isCritical: isCritical, trigger: trigger,
+                    accessoryName: accessoryName, characteristic: characteristic
+                )
             } else {
                 guard let url = URL(string: baseURL + "/hooks/wake") else { continue }
                 // Default wake mode is "next-heartbeat" (batched) for ambient events.
                 // Security triggers should set wakeMode: "now" explicitly.
                 let mode = trigger.wakeMode ?? "next-heartbeat"
                 let payload: [String: Any] = ["text": "[\(trigger.label)] \(text)", "mode": mode]
-                sendWebhookPayload(payload, to: url, token: webhook.token, isCritical: isCritical)
+                sendWebhookPayload(
+                    payload, to: url, token: webhook.token,
+                    isCritical: isCritical, trigger: trigger,
+                    accessoryName: accessoryName, characteristic: characteristic
+                )
             }
         }
         return matched
@@ -419,9 +447,24 @@ final class HomeEventLogger {
 
     private func sendWebhookPayload(
         _ payload: [String: Any], to url: URL, token: String,
-        timeout: TimeInterval = 10, isCritical: Bool = false
+        timeout: TimeInterval = 10, isCritical: Bool = false,
+        trigger: HomeClawConfig.WebhookTrigger? = nil,
+        accessoryName: String? = nil, characteristic: String? = nil
     ) {
-        guard WebhookCircuitBreaker.shared.shouldAllow(isCritical: isCritical) else { return }
+        let webhookLog = WebhookEventLogger.shared
+        let endpoint = url.path
+
+        guard WebhookCircuitBreaker.shared.shouldAllow(isCritical: isCritical) else {
+            webhookLog.log(
+                outcome: .dropped,
+                triggerID: trigger?.id, triggerLabel: trigger?.label,
+                endpoint: endpoint, accessoryName: accessoryName,
+                characteristic: characteristic,
+                circuitState: WebhookCircuitBreaker.shared.state.rawValue,
+                reason: "circuit_breaker"
+            )
+            return
+        }
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
 
@@ -438,18 +481,41 @@ final class HomeEventLogger {
         request.timeoutInterval = timeout
 
         let logger = self.logger
+        let triggerID = trigger?.id
+        let triggerLabel = trigger?.label
         Task.detached {
             do {
                 let (_, response) = try await URLSession.shared.data(for: request)
                 if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
                     await WebhookCircuitBreaker.shared.recordFailure(httpStatus: http.statusCode)
+                    await webhookLog.log(
+                        outcome: .failed,
+                        triggerID: triggerID, triggerLabel: triggerLabel,
+                        endpoint: endpoint, accessoryName: accessoryName,
+                        characteristic: characteristic,
+                        httpStatus: http.statusCode
+                    )
                     logger.warning("Webhook returned \(http.statusCode)")
                 } else {
                     let status = (response as? HTTPURLResponse)?.statusCode ?? 200
                     await WebhookCircuitBreaker.shared.recordSuccess(httpStatus: status)
+                    await webhookLog.log(
+                        outcome: .delivered,
+                        triggerID: triggerID, triggerLabel: triggerLabel,
+                        endpoint: endpoint, accessoryName: accessoryName,
+                        characteristic: characteristic,
+                        httpStatus: status
+                    )
                 }
             } catch {
                 await WebhookCircuitBreaker.shared.recordFailure()
+                await webhookLog.log(
+                    outcome: .failed,
+                    triggerID: triggerID, triggerLabel: triggerLabel,
+                    endpoint: endpoint, accessoryName: accessoryName,
+                    characteristic: characteristic,
+                    error: error.localizedDescription
+                )
                 logger.warning("Webhook delivery failed: \(error.localizedDescription)")
             }
         }

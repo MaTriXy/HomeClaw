@@ -131,6 +131,8 @@ HomeKit (HMAccessoryDelegate push notification)
         ▼
 HomeClaw event logger (writes to events.jsonl)
         │
+        ├── Battery event? ──► Logged to disk only (never sent via webhook)
+        │
         ├── Trigger matches? ──► POST /hooks/wake or /hooks/agent
         │
         └── No trigger ──► Logged to disk only (no webhook sent)
@@ -192,15 +194,26 @@ Or use HomeClaw Settings > Webhook (the Generate button creates a token — copy
 
 Open HomeClaw Settings > Webhook. Check the scenes and accessories you want to fire webhooks. Start with security accessories (locks, garage doors) and a few lights to verify.
 
-Triggers can also be managed via the socket:
+Triggers can also be managed via the CLI:
 
 ```bash
 # List current triggers
-echo '{"command":"list_triggers"}' | nc -U ~/Library/Group\ Containers/group.com.shahine.homeclaw/homeclaw.sock
+homeclaw-cli triggers
 
-# Add a trigger
-echo '{"command":"add_trigger","args":{"label":"Garage Door","accessory_id":"<uuid>"}}' | nc -U ~/Library/Group\ Containers/group.com.shahine.homeclaw/homeclaw.sock
+# Add a trigger for all state changes on an accessory
+homeclaw-cli triggers add --label "Garage Door" --accessory-id "<uuid>"
+
+# Add a trigger for a specific characteristic only
+homeclaw-cli triggers add --label "Mailbox Open" --accessory-id "<uuid>" --characteristic contact_state
+
+# Update a trigger
+homeclaw-cli triggers update "<trigger-id>" --wake-mode now
+
+# Remove a trigger
+homeclaw-cli triggers remove "<trigger-id>"
 ```
+
+> **Note:** Battery-related characteristics (`battery_level`, `low_battery`) are automatically excluded from webhooks. They are still logged to the event log and cached for status queries, but never fire webhook triggers.
 
 #### Step 4: Verify
 
@@ -219,32 +232,29 @@ Look for a `System:` line in the OpenClaw TUI.
 
 ### Upgrading Triggers to Agent Mode
 
-The Settings UI creates triggers with **wake** behavior. Upgrade specific triggers to **agent** mode via the socket for smarter event handling:
+The Settings UI creates triggers with **wake** behavior. Upgrade specific triggers to **agent** mode via the CLI for smarter event handling:
 
 ```bash
 # Upgrade an existing trigger to agent mode
-echo '{"command":"update_trigger","args":{
-  "id":"<trigger-uuid>",
-  "action":"agent",
-  "agent_prompt":"The front door was unlocked. Check recent activity and alert me if unexpected.",
-  "agent_name":"HomeClaw Security",
-  "agent_deliver":true
-}}' | nc -U ~/Library/Group\ Containers/group.com.shahine.homeclaw/homeclaw.sock
+homeclaw-cli triggers update "<trigger-uuid>" \
+  --action agent \
+  --agent-prompt "The front door was unlocked. Check recent activity and alert me if unexpected." \
+  --agent-name "HomeClaw Security" \
+  --agent-deliver true
 ```
 
 Or create an agent trigger directly:
 
 ```bash
-echo '{"command":"add_trigger","args":{
-  "label":"Front door unlocked",
-  "accessory_id":"<lock-uuid>",
-  "characteristic":"lock_target_state",
-  "value":"unlocked",
-  "action":"agent",
-  "agent_prompt":"The front door was unlocked. Analyze recent activity and determine if this is expected.",
-  "agent_name":"HomeClaw Security",
-  "agent_deliver":true
-}}' | nc -U ~/Library/Group\ Containers/group.com.shahine.homeclaw/homeclaw.sock
+homeclaw-cli triggers add \
+  --label "Front door unlocked" \
+  --accessory-id "<lock-uuid>" \
+  --characteristic lock_target_state \
+  --value unlocked \
+  --action agent \
+  --agent-prompt "The front door was unlocked. Analyze recent activity and determine if this is expected." \
+  --agent-name "HomeClaw Security" \
+  --agent-deliver
 ```
 
 **Tip:** Set `agent_deliver: true` on security triggers. This marks them as **critical** — they bypass the circuit breaker and always attempt delivery, even when the circuit is tripped from other failures.
@@ -292,6 +302,23 @@ Critical triggers (`agent_deliver: true`) always bypass.
 | `agent_id` | string | — | Route to a specific OpenClaw agent by ID |
 | `agent_name` | string | `"HomeClaw"` | Human label shown in agent responses |
 | `agent_deliver` | bool | — | Send the agent's response to a messaging channel |
+
+## Agent-Friendly CLI
+
+The CLI follows [AI-agent best practices](https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/):
+
+- **Auto-JSON**: When stdout is not a TTY (piped or called by an agent), all commands output JSON automatically — no `--json` flag needed.
+- **`OUTPUT_FORMAT=json`**: Set this environment variable to force JSON output in all contexts.
+- **`--dry-run` on mutations**: `set --dry-run` validates the accessory, characteristic, and value without writing to the device. `delete-scene --dry-run` confirms the scene exists without deleting.
+- **Input validation**: Control characters (ASCII < 0x20) are rejected from all string arguments to defend against hallucinated inputs.
+
+```bash
+# Dry run: validate without actuating
+homeclaw-cli set "Front Door" lock_target_state locked --dry-run
+
+# Force JSON from any context
+OUTPUT_FORMAT=json homeclaw-cli status
+```
 
 ## Important Notes
 

@@ -242,10 +242,14 @@ final class SocketServer: @unchecked Sendable {
                 else {
                     return encodeResponse(success: false, error: "Missing id, characteristic, or value")
                 }
+                let dryRun = (args["dry_run"] as? Bool)
+                    ?? (args["dry_run"] as? String).map { $0 == "true" }
+                    ?? false
                 result = try await hk.controlAccessory(
                     id: id, characteristic: characteristic, value: value,
                     homeID: args["home_id"] as? String,
-                    serviceType: args["service_type"] as? String
+                    serviceType: args["service_type"] as? String,
+                    dryRun: dryRun
                 )
 
             case "list_rooms":
@@ -504,7 +508,10 @@ final class SocketServer: @unchecked Sendable {
                 guard let name = args["name"] as? String else {
                     return encodeResponse(success: false, error: "Missing 'name' argument")
                 }
-                result = try await hk.deleteScene(name: name, homeName: args["home"] as? String)
+                let dryRun = (args["dry_run"] as? Bool)
+                    ?? (args["dry_run"] as? String).map { $0 == "true" }
+                    ?? false
+                result = try await hk.deleteScene(name: name, homeName: args["home"] as? String, dryRun: dryRun)
 
             case "assign_rooms":
                 guard let assignments = args["assignments"] as? [[String: String]] else {
@@ -535,6 +542,27 @@ final class SocketServer: @unchecked Sendable {
                     actions: actions,
                     dryRun: dryRun
                 )
+
+            case "webhook_log":
+                let limit = (args["limit"] as? Int) ?? (args["limit"] as? String).flatMap(Int.init) ?? 50
+                let outcomeFilter: WebhookEventLogger.Outcome? = (args["outcome"] as? String).flatMap {
+                    WebhookEventLogger.Outcome(rawValue: $0)
+                }
+                var since: Date?
+                if let sinceStr = args["since"] as? String {
+                    since = ISO8601DateFormatter().date(from: sinceStr)
+                }
+                result = [
+                    "entries": WebhookEventLogger.shared.readEntries(
+                        since: since, limit: limit, outcome: outcomeFilter),
+                ] as [String: Any]
+
+            case "webhook_log_stats":
+                result = WebhookEventLogger.shared.logStats()
+
+            case "purge_webhook_log":
+                WebhookEventLogger.shared.purge()
+                result = WebhookEventLogger.shared.logStats()
 
             default:
                 return encodeResponse(success: false, error: "Unknown command: \(command)")
