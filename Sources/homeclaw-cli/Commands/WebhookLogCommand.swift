@@ -64,6 +64,8 @@ struct WebhookLog: ParsableCommand {
             let label = entry["trigger_label"] as? String
             let accessory = entry["accessory"] as? String
             let characteristic = entry["characteristic"] as? String
+            let value = entry["value"] as? String
+            let previousValue = entry["previous_value"] as? String
             let endpoint = entry["endpoint"] as? String
             let httpStatus = entry["http_status"] as? Int
             let error = entry["error"] as? String
@@ -82,8 +84,14 @@ struct WebhookLog: ParsableCommand {
 
             if let label { parts.append(label) }
             if let accessory {
-                let charSuffix = characteristic.map { " (\($0))" } ?? ""
-                parts.append(accessory + charSuffix)
+                var detail = accessory
+                if let characteristic { detail += " (\(characteristic))" }
+                if let previousValue, let value {
+                    detail += " \(previousValue) → \(value)"
+                } else if let value {
+                    detail += " = \(value)"
+                }
+                parts.append(detail)
             }
             if let endpoint { parts.append("→ \(endpoint)") }
             if let httpStatus { parts.append("HTTP \(httpStatus)") }

@@ -43,6 +43,8 @@ final class WebhookEventLogger {
         endpoint: String? = nil,
         accessoryName: String? = nil,
         characteristic: String? = nil,
+        value: String? = nil,
+        previousValue: String? = nil,
         httpStatus: Int? = nil,
         error: String? = nil,
         circuitState: String? = nil,
@@ -57,6 +59,8 @@ final class WebhookEventLogger {
         if let endpoint { entry["endpoint"] = endpoint }
         if let accessoryName { entry["accessory"] = accessoryName }
         if let characteristic { entry["characteristic"] = characteristic }
+        if let value { entry["value"] = value }
+        if let previousValue { entry["previous_value"] = previousValue }
         if let httpStatus { entry["http_status"] = httpStatus }
         if let error { entry["error"] = error }
         if let circuitState { entry["circuit_state"] = circuitState }

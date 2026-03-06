@@ -319,12 +319,20 @@ final class HomeEventLogger {
         let accessoryID = accessory?["id"] as? String
         let characteristic = event["characteristic"] as? String
         let value = event["value"] as? String
+        let previousValue = event["previous_value"] as? String
 
         // Skip battery-related characteristics — they are not actionable state changes.
         // Silently drop these without logging; they fire too frequently and flood webhooks.jsonl.
         if let characteristic, Self.webhookExcludedCharacteristics.contains(characteristic) {
             return false
         }
+
+        // Skip unchanged values — HomeKit re-broadcasts cached state on hub reconnection
+        // and sensor polling. These are not real state transitions.
+        if let value, let previousValue, value == previousValue {
+            return false
+        }
+
         let scene = event["scene"] as? [String: Any]
         let sceneID = scene?["id"] as? String
         let sceneName = scene?["name"] as? String
@@ -354,7 +362,8 @@ final class HomeEventLogger {
                 sendWebhookPayload(
                     payload, to: url, token: webhook.token, timeout: 30,
                     isCritical: isCritical, trigger: trigger,
-                    accessoryName: accessoryName, characteristic: characteristic
+                    accessoryName: accessoryName, characteristic: characteristic,
+                    value: value, previousValue: previousValue
                 )
             } else {
                 guard let url = URL(string: baseURL + "/hooks/wake") else { continue }
@@ -365,7 +374,8 @@ final class HomeEventLogger {
                 sendWebhookPayload(
                     payload, to: url, token: webhook.token,
                     isCritical: isCritical, trigger: trigger,
-                    accessoryName: accessoryName, characteristic: characteristic
+                    accessoryName: accessoryName, characteristic: characteristic,
+                    value: value, previousValue: previousValue
                 )
             }
         }
@@ -443,7 +453,8 @@ final class HomeEventLogger {
         _ payload: [String: Any], to url: URL, token: String,
         timeout: TimeInterval = 10, isCritical: Bool = false,
         trigger: HomeClawConfig.WebhookTrigger? = nil,
-        accessoryName: String? = nil, characteristic: String? = nil
+        accessoryName: String? = nil, characteristic: String? = nil,
+        value: String? = nil, previousValue: String? = nil
     ) {
         let webhookLog = WebhookEventLogger.shared
         let endpoint = url.path
@@ -454,6 +465,7 @@ final class HomeEventLogger {
                 triggerID: trigger?.id, triggerLabel: trigger?.label,
                 endpoint: endpoint, accessoryName: accessoryName,
                 characteristic: characteristic,
+                value: value, previousValue: previousValue,
                 circuitState: WebhookCircuitBreaker.shared.state.rawValue,
                 reason: "circuit_breaker"
             )
@@ -487,6 +499,7 @@ final class HomeEventLogger {
                         triggerID: triggerID, triggerLabel: triggerLabel,
                         endpoint: endpoint, accessoryName: accessoryName,
                         characteristic: characteristic,
+                        value: value, previousValue: previousValue,
                         httpStatus: http.statusCode
                     )
                     logger.warning("Webhook returned \(http.statusCode)")
@@ -498,6 +511,7 @@ final class HomeEventLogger {
                         triggerID: triggerID, triggerLabel: triggerLabel,
                         endpoint: endpoint, accessoryName: accessoryName,
                         characteristic: characteristic,
+                        value: value, previousValue: previousValue,
                         httpStatus: status
                     )
                 }
@@ -508,6 +522,7 @@ final class HomeEventLogger {
                     triggerID: triggerID, triggerLabel: triggerLabel,
                     endpoint: endpoint, accessoryName: accessoryName,
                     characteristic: characteristic,
+                    value: value, previousValue: previousValue,
                     error: error.localizedDescription
                 )
                 logger.warning("Webhook delivery failed: \(error.localizedDescription)")

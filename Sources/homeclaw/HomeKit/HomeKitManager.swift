@@ -1122,6 +1122,14 @@ extension HomeKitManager: HMAccessoryDelegate {
                 return
             }
 
+            // Skip unchanged values — HomeKit re-broadcasts cached state on hub
+            // reconnection and sensor polling. Not real state transitions.
+            if let previousValue, previousValue == value {
+                AppLogger.homekit.debug("Skipped unchanged: \(accessory.name).\(name) = \(value)")
+                scheduleMenuDataPush()
+                return
+            }
+
             // Look up which home this accessory belongs to
             let home = findHome(for: accessory)
 
