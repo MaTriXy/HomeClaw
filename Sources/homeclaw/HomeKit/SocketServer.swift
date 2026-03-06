@@ -359,8 +359,10 @@ final class SocketServer: @unchecked Sendable {
                 let url = (args["url"] as? String) ?? existing?.url ?? ""
                 let token = (args["token"] as? String) ?? existing?.token ?? ""
                 let events = (args["events"] as? [String]) ?? existing?.events
+                let endpoint = (args["webhook_endpoint"] as? String) ?? existing?.webhookEndpoint
                 HomeClawConfig.shared.webhookConfig = HomeClawConfig.WebhookConfig(
-                    enabled: enabled, url: url, token: token, events: events
+                    enabled: enabled, url: url, token: token, events: events,
+                    webhookEndpoint: endpoint
                 )
                 // Full reset (including counters) when re-enabling webhook
                 if enabled && WebhookCircuitBreaker.shared.state == .hardOpen {
@@ -375,7 +377,7 @@ final class SocketServer: @unchecked Sendable {
                     return encodeResponse(success: false, error: "Webhook URL is not configured")
                 }
                 let baseURL = webhook.url.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                guard let testURL = URL(string: baseURL + "/hooks/wake") else {
+                guard let testURL = URL(string: baseURL + HomeClawConfig.shared.effectiveEndpoint) else {
                     return encodeResponse(success: false, error: "Invalid webhook URL: \(baseURL)")
                 }
                 let testPayload: [String: Any] = [
