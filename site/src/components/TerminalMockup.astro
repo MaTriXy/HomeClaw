@@ -35,12 +35,12 @@
 
 <span class="accent">Kitchen</span> <span class="dim">(6 accessories)</span>
 
-<span class="row"><span class="badge-on"> ON </span> <span class="device">Kitchen Pendant</span>      <span class="dim">lightbulb</span>  <span class="text">brightness: 80%</span></span>
-<span class="row"><span class="badge-off">OFF</span> <span class="device">Under Cabinet Lights</span> <span class="dim">lightbulb</span>  <span class="text">brightness: 0%</span></span>
-<span class="row"><span class="badge-on"> ON </span> <span class="device">Kitchen Outlet</span>       <span class="dim">outlet</span>     <span class="text">in use</span></span>
-<span class="row"><span class="badge-read"> -- </span> <span class="device">Kitchen Motion</span>       <span class="dim">sensor</span>     <span class="text">no motion</span></span>
-<span class="row"><span class="badge-read"> -- </span> <span class="device">Kitchen Temp</span>         <span class="dim">sensor</span>     <span class="text">71.2 F</span></span>
-<span class="row"><span class="badge-read"> -- </span> <span class="device">Fridge Contact</span>       <span class="dim">sensor</span>     <span class="text">closed</span></span>
+  <span class="badge-on"> ON</span>  <span class="text">Kitchen Pendant       </span><span class="dim">lightbulb  </span><span class="text">brightness: 80%</span>
+  <span class="badge-off">OFF</span>  <span class="text">Under Cabinet Lights  </span><span class="dim">lightbulb  </span><span class="text">brightness: 0%</span>
+  <span class="badge-on"> ON</span>  <span class="text">Kitchen Outlet        </span><span class="dim">outlet     </span><span class="text">in use</span>
+  <span class="badge-read"> --</span>  <span class="text">Kitchen Motion        </span><span class="dim">sensor     </span><span class="text">no motion</span>
+  <span class="badge-read"> --</span>  <span class="text">Kitchen Temp          </span><span class="dim">sensor     </span><span class="text">71.2 F</span>
+  <span class="badge-read"> --</span>  <span class="text">Fridge Contact        </span><span class="dim">sensor     </span><span class="text">closed</span>
 
 <span class="prompt">></span> <span class="cmd">homeclaw-cli</span> <span class="arg">set "Kitchen Pendant" brightness 50</span>
 
@@ -142,18 +142,6 @@
   .accent { color: #22c55e; }
   .text { color: #e5e5e5; }
   .success { color: #34d399; font-weight: 700; }
-
-  .row {
-    display: block;
-    white-space: pre;
-  }
-
-  .device {
-    display: inline-block;
-    width: 21ch;
-    color: #e5e5e5;
-    font-weight: 500;
-  }
 
   .badge-on {
     color: #22c55e;
