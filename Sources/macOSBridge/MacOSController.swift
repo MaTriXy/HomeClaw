@@ -450,9 +450,12 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate {
 
         // Status-only — display current reading, no toggle action
         case "thermostat":
-            let temp = state["current_temperature"] ?? "?"
+            let temp = state["current_temperature"]
             let mode = state["current_heating_cooling"] ?? "off"
-            return .statusOnly("\(temp) (\(mode))")
+            if let temp, temp != "--" {
+                return .statusOnly("\(temp) (\(mode))")
+            }
+            return .statusOnly(mode != "off" ? mode : "")
 
         case "lock":
             return .statusOnly(state["lock_current_state"] ?? "unknown")
@@ -470,20 +473,20 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate {
             return .statusOnly("")
 
         case "sensor":
-            if let temp = state["current_temperature"] { return .statusOnly(temp) }
-            if let humidity = state["current_humidity"] {
+            if let temp = state["current_temperature"], temp != "--" { return .statusOnly(temp) }
+            if let humidity = state["current_humidity"], humidity != "--" {
                 return .statusOnly("\(humidity)% humidity")
             }
-            if let motion = state["motion_detected"] {
+            if let motion = state["motion_detected"], motion != "--" {
                 return .statusOnly(motion == "true" ? "motion" : "clear")
             }
-            if let occupancy = state["occupancy_detected"] {
+            if let occupancy = state["occupancy_detected"], occupancy != "--" {
                 return .statusOnly(occupancy == "true" ? "occupied" : "clear")
             }
-            if let contact = state["contact_state"] {
+            if let contact = state["contact_state"], contact != "--" {
                 return .statusOnly(contact == "0" ? "closed" : "open")
             }
-            if let battery = state["battery_level"] {
+            if let battery = state["battery_level"], battery != "--" {
                 return .statusOnly("\(battery)% battery")
             }
             return .statusOnly("")
