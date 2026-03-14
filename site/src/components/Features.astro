@@ -1,0 +1,47 @@
+---
+import FeatureCard from './FeatureCard.astro';
+---
+
+<section id="features" class="py-24 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-6xl mx-auto">
+    <!-- Section heading -->
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4 text-foreground">Everything You Need</h2>
+    <p class="text-muted text-center mb-16 max-w-2xl mx-auto">
+      A complete toolkit for HomeKit: 8 MCP tools, a full CLI, and plugins for Claude Code and OpenClaw.
+    </p>
+
+    <!-- Feature grid: 3 columns, 2 rows = 6 cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <FeatureCard
+        icon="🏠"
+        title="HomeKit Access"
+        description="The only way to control HomeKit from outside the Home app. HomeClaw bridges Apple's private API with a clean, scriptable interface."
+      />
+      <FeatureCard
+        icon="🛠️"
+        title="8 MCP Tools"
+        description="Accessories, rooms, scenes, device maps, events, webhooks, and config. Everything you need to manage your smart home."
+      />
+      <FeatureCard
+        icon="🔌"
+        title="3 Client Options"
+        description="Use with Claude Code MCP, the OpenClaw plugin, or the CLI directly. Pick what fits your workflow."
+      />
+      <FeatureCard
+        icon="🗺️"
+        title="LLM Device Map"
+        description="Purpose-built device map with semantic types, auto-generated aliases, and state summaries. AI assistants understand your home instantly."
+      />
+      <FeatureCard
+        icon="📡"
+        title="Webhooks"
+        description="Push HomeKit events to OpenClaw with configurable triggers, delivery modes, and a tiered circuit breaker for reliability."
+      />
+      <FeatureCard
+        icon="📋"
+        title="Event Log"
+        description="Full event history of characteristic changes, scene triggers, and control actions. Query by time, type, or accessory."
+      />
+    </div>
+  </div>
+</section>

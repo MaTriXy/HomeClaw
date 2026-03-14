@@ -1,0 +1,86 @@
+---
+const steps = [
+  {
+    number: 1,
+    title: 'Install HomeClaw',
+    label: 'TestFlight',
+    lines: [
+      { type: 'comment', text: '# Join the TestFlight beta' },
+      { type: 'url', text: 'https://testflight.apple.com/join/zjSnz8eK' },
+      { type: 'blank', text: '' },
+      { type: 'comment', text: '# Or build from source' },
+      { type: 'command', text: 'git clone https://github.com/omarshahine/HomeClaw.git' },
+      { type: 'command', text: 'cd HomeClaw && scripts/build.sh --release --install' },
+    ],
+  },
+  {
+    number: 2,
+    title: 'Claude Code',
+    label: 'Plugin',
+    lines: [
+      { type: 'comment', text: '# Register the marketplace and install' },
+      { type: 'command', text: '/plugin marketplace add ~/GitHub/HomeClaw' },
+      { type: 'command', text: '/plugin install homeclaw@homeclaw' },
+      { type: 'blank', text: '' },
+      { type: 'comment', text: '# Then just ask Claude:' },
+      { type: 'command', text: '"Turn off all the lights in the kitchen"' },
+      { type: 'command', text: '"Set the thermostat to 72"' },
+    ],
+  },
+  {
+    number: 3,
+    title: 'CLI',
+    label: 'Terminal',
+    lines: [
+      { type: 'comment', text: '# List devices by room' },
+      { type: 'command', text: 'homeclaw-cli list --room "Living Room"' },
+      { type: 'blank', text: '' },
+      { type: 'comment', text: '# Control a device' },
+      { type: 'command', text: 'homeclaw-cli set "Bedroom Light" brightness 40' },
+      { type: 'blank', text: '' },
+      { type: 'comment', text: '# Trigger a scene' },
+      { type: 'command', text: 'homeclaw-cli trigger "Good Night"' },
+    ],
+  },
+];
+---
+
+<section id="quickstart" class="py-24 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto">
+    <!-- Section heading -->
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4 text-foreground">Quick Start</h2>
+    <p class="text-muted text-center mb-12">Install the app, then pick your integration</p>
+
+    <!-- Setup cards -->
+    <div class="space-y-6">
+      {steps.map((step) => (
+        <div class="bg-card border border-border rounded-xl p-6" data-animate>
+          <!-- Header -->
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm font-bold">
+              {step.number}
+            </div>
+            <span class="font-semibold text-foreground text-lg">{step.title}</span>
+            <span class="text-xs text-muted bg-card border border-border rounded-full px-2 py-0.5">
+              {step.label}
+            </span>
+          </div>
+
+          <!-- Code block -->
+          <div class="bg-[#0d0d0d] border border-border rounded-lg p-4 font-mono text-sm overflow-x-auto">
+            <pre><code>{step.lines.map((line) => {
+              if (line.type === 'blank') return '\n';
+              if (line.type === 'comment') return <span class="text-muted">{line.text}</span>;
+              if (line.type === 'url') return <span class="text-accent">{line.text}</span>;
+              return <span class="text-foreground">{line.text}</span>;
+            }).reduce((acc: (string | HTMLElement)[], el, i) => {
+              if (i > 0) acc.push('\n');
+              acc.push(el);
+              return acc;
+            }, [])}</code></pre>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

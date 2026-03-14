@@ -1,0 +1,105 @@
+---
+const categories = [
+  {
+    name: 'Accessories',
+    count: 1,
+    description: 'List, get details, search, or control any HomeKit accessory',
+    tools: ['homekit_accessories'],
+    actions: ['list', 'get', 'search', 'control'],
+  },
+  {
+    name: 'Rooms',
+    count: 1,
+    description: 'Browse rooms and their accessories',
+    tools: ['homekit_rooms'],
+  },
+  {
+    name: 'Scenes',
+    count: 1,
+    description: 'List and trigger HomeKit scenes',
+    tools: ['homekit_scenes'],
+    actions: ['list', 'trigger'],
+  },
+  {
+    name: 'Device Map',
+    count: 1,
+    description: 'LLM-optimized map with semantic types and aliases',
+    tools: ['homekit_device_map'],
+  },
+  {
+    name: 'Events',
+    count: 1,
+    description: 'Query characteristic changes, scene triggers, control actions',
+    tools: ['homekit_events'],
+  },
+  {
+    name: 'Webhooks',
+    count: 1,
+    description: 'Configure, test, and monitor webhook delivery',
+    tools: ['homekit_webhook'],
+    actions: ['setup', 'test', 'reset', 'status'],
+  },
+  {
+    name: 'Config',
+    count: 1,
+    description: 'Set active home, device filtering, and preferences',
+    tools: ['homekit_config'],
+    actions: ['get', 'set'],
+  },
+  {
+    name: 'Status',
+    count: 1,
+    description: 'Check connectivity, home count, and accessory count',
+    tools: ['homekit_status'],
+  },
+];
+
+const accessories = [
+  'Lights', 'Thermostats', 'Locks', 'Doors', 'Garage Doors', 'Fans',
+  'Window Coverings', 'Switches', 'Outlets', 'Sensors', 'Doorbells', 'Cameras',
+];
+---
+
+<section id="tools" class="py-24 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-4xl mx-auto">
+    <!-- Section heading -->
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4 text-foreground">8 Tools, Full Coverage</h2>
+    <p class="text-muted text-center mb-16">Consolidated tools with actions, not a tool per operation</p>
+
+    <!-- Tool grid -->
+    <div class="space-y-4">
+      {categories.map((cat) => (
+        <div class="bg-card border border-border rounded-xl p-6" data-animate>
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="font-semibold text-foreground text-lg">{cat.name}</h3>
+            <span class="bg-background border border-border rounded-md px-3 py-1 text-sm font-mono text-accent">
+              {cat.tools[0]}
+            </span>
+          </div>
+          <p class="text-muted text-sm mb-3">{cat.description}</p>
+          {cat.actions && (
+            <div class="flex flex-wrap gap-2">
+              {cat.actions.map((action) => (
+                <span class="bg-background border border-border rounded-md px-2.5 py-0.5 text-xs font-mono text-muted">
+                  {action}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <!-- Supported accessories -->
+    <div class="mt-12" data-animate>
+      <h3 class="text-xl font-semibold text-foreground text-center mb-6">Supported Accessories</h3>
+      <div class="flex flex-wrap justify-center gap-2">
+        {accessories.map((acc) => (
+          <span class="bg-card border border-border rounded-full px-4 py-1.5 text-sm text-muted">
+            {acc}
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>

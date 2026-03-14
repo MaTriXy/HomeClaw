@@ -1,0 +1,52 @@
+---
+
+---
+
+<section id="architecture" class="py-24 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-5xl mx-auto">
+    <!-- Section heading -->
+    <h2 class="text-3xl sm:text-4xl font-bold text-center mb-4 text-foreground">How It Works</h2>
+    <p class="text-muted text-center mb-16">Three layers, one Unix socket</p>
+
+    <!-- Architecture flow -->
+    <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6" data-animate>
+      <!-- Box 1: AI Client -->
+      <div class="bg-card border border-border rounded-xl p-6 text-center flex-1 max-w-xs">
+        <div class="text-2xl mb-2">🤖</div>
+        <div class="font-semibold text-foreground">AI Client</div>
+        <div class="text-sm text-muted">Claude Code, OpenClaw, or CLI</div>
+      </div>
+
+      <!-- Arrow 1 -->
+      <div class="text-accent text-2xl font-bold">
+        <span class="hidden md:block">&rarr;</span>
+        <span class="block md:hidden">&darr;</span>
+      </div>
+
+      <!-- Box 2: MCP / CLI -->
+      <div class="bg-card border border-border rounded-xl p-6 text-center flex-1 max-w-xs">
+        <div class="text-2xl mb-2">⚡</div>
+        <div class="font-semibold text-foreground">MCP Server / CLI</div>
+        <div class="text-sm text-muted">Unix socket, JSON protocol</div>
+      </div>
+
+      <!-- Arrow 2 -->
+      <div class="text-accent text-2xl font-bold">
+        <span class="hidden md:block">&rarr;</span>
+        <span class="block md:hidden">&darr;</span>
+      </div>
+
+      <!-- Box 3: HomeClaw App -->
+      <div class="bg-card border border-border rounded-xl p-6 text-center flex-1 max-w-xs">
+        <div class="text-2xl mb-2">🏠</div>
+        <div class="font-semibold text-foreground">HomeClaw App</div>
+        <div class="text-sm text-muted">Mac Catalyst, direct HomeKit access</div>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <p class="text-xs text-muted text-center mt-8">
+      Single-process design. Apple's HMHomeManager requires a UIKit/Catalyst app with the HomeKit entitlement. HomeClaw runs as a lightweight menu bar app.
+    </p>
+  </div>
+</section>

@@ -24,3 +24,7 @@ device-map*.md
 
 # Node.js
 node_modules/
+
+# Astro site
+site/dist/
+site/.astro/

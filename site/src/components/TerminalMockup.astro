@@ -1,0 +1,201 @@
+---
+/**
+ * Terminal mockup component showing realistic HomeClaw CLI interactions
+ */
+---
+
+<div class="terminal-wrapper">
+  <div class="terminal">
+    <!-- Title bar with traffic lights -->
+    <div class="terminal-titlebar">
+      <div class="terminal-dots">
+        <span class="dot dot-red"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+      </div>
+      <span class="terminal-title">homeclaw-cli -- zsh -- 120x48</span>
+      <div class="terminal-dots invisible">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
+
+    <!-- Terminal body -->
+    <div class="terminal-body">
+      <pre><code><span class="prompt">></span> <span class="cmd">homeclaw-cli</span> <span class="arg">status</span>
+
+<span class="accent">HomeClaw</span>  <span class="success">connected</span>
+  <span class="dim">Home:</span>     <span class="text">Lake House</span>
+  <span class="dim">Rooms:</span>    <span class="text">12</span>
+  <span class="dim">Devices:</span>  <span class="text">47 accessories</span>
+  <span class="dim">Webhook:</span>  <span class="success">healthy</span> <span class="dim">(circuit closed, 142 delivered)</span>
+
+<span class="prompt">></span> <span class="cmd">homeclaw-cli</span> <span class="arg">list --room "Kitchen"</span>
+
+<span class="accent">Kitchen</span> <span class="dim">(6 accessories)</span>
+
+  <span class="badge-on">ON</span>  <span class="device">Kitchen Pendant</span>       <span class="dim">lightbulb</span>    <span class="text">brightness: 80%</span>
+  <span class="badge-off">OFF</span> <span class="device">Under Cabinet Lights</span>  <span class="dim">lightbulb</span>    <span class="text">brightness: 0%</span>
+  <span class="badge-on">ON</span>  <span class="device">Kitchen Outlet</span>        <span class="dim">outlet</span>       <span class="text">in use</span>
+  <span class="badge-read">--</span>  <span class="device">Kitchen Motion</span>        <span class="dim">sensor</span>       <span class="text">no motion</span>
+  <span class="badge-read">--</span>  <span class="device">Kitchen Temp</span>          <span class="dim">sensor</span>       <span class="text">71.2 F</span>
+  <span class="badge-read">--</span>  <span class="device">Fridge Contact</span>       <span class="dim">sensor</span>       <span class="text">closed</span>
+
+<span class="prompt">></span> <span class="cmd">homeclaw-cli</span> <span class="arg">set "Kitchen Pendant" brightness 50</span>
+
+<span class="success">done</span> <span class="text">Kitchen Pendant brightness </span><span class="dim">80%</span><span class="text"> -> </span><span class="accent">50%</span>
+
+<span class="prompt">></span> <span class="cmd">homeclaw-cli</span> <span class="arg">trigger "Good Night"</span>
+
+<span class="success">done</span> <span class="text">Scene triggered: </span><span class="accent">Good Night</span>
+  <span class="dim">14 accessories updated</span>
+
+<span class="prompt">></span> <span class="cursor">|</span></code></pre>
+    </div>
+  </div>
+</div>
+
+<style>
+  .terminal-wrapper {
+    perspective: 1000px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  .terminal {
+    background: #1a1a1a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 25px 50px -12px rgba(0, 0, 0, 0.6),
+      0 0 80px rgba(34, 197, 94, 0.08);
+    transform: rotateX(2deg);
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .terminal:hover {
+    transform: rotateX(0deg);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 30px 60px -15px rgba(0, 0, 0, 0.7),
+      0 0 120px rgba(34, 197, 94, 0.12);
+  }
+
+  .terminal-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #2a2a2a;
+    border-bottom: 1px solid #333;
+  }
+
+  .terminal-dots {
+    display: flex;
+    gap: 8px;
+  }
+
+  .terminal-dots.invisible {
+    visibility: hidden;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .terminal-title {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: #666;
+    user-select: none;
+  }
+
+  .terminal-body {
+    padding: 20px 24px 24px;
+    overflow-x: auto;
+  }
+
+  .terminal-body pre {
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e5e5e5;
+  }
+
+  .terminal-body code {
+    font-family: inherit;
+  }
+
+  .prompt { color: #22c55e; font-weight: 600; }
+  .cmd { color: #60a5fa; }
+  .arg { color: #fbbf24; }
+  .dim { color: #555; }
+  .accent { color: #22c55e; }
+  .text { color: #e5e5e5; }
+  .success { color: #34d399; font-weight: 700; }
+
+  .device {
+    display: inline-block;
+    width: 22ch;
+    color: #e5e5e5;
+    font-weight: 500;
+  }
+
+  .badge-on {
+    display: inline-block;
+    width: 3ch;
+    text-align: center;
+    color: #22c55e;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .badge-off {
+    display: inline-block;
+    width: 3ch;
+    text-align: center;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .badge-read {
+    display: inline-block;
+    width: 3ch;
+    text-align: center;
+    color: #555;
+    font-size: 12px;
+  }
+
+  .cursor {
+    color: #22c55e;
+    animation: blink 1.2s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  @media (max-width: 640px) {
+    .terminal-body pre {
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .terminal-body {
+      padding: 16px;
+    }
+    .terminal-title {
+      display: none;
+    }
+  }
+</style>
