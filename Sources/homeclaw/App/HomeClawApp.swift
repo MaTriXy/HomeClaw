@@ -472,17 +472,6 @@ class SettingsSceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
     #endif
-
-    func sceneDidEnterBackground(_ scene: UIScene) {
-        #if targetEnvironment(macCatalyst)
-        // Destroy the scene session so it doesn't persist across launches.
-        if let session = (scene as? UIWindowScene)?.session {
-            UIApplication.shared.requestSceneSessionDestruction(
-                session, options: nil)
-        }
-        AppLogger.app.info("Settings window closed")
-        #endif
-    }
 }
 
 // MARK: - Onboarding Scene Delegate
@@ -517,7 +506,7 @@ class OnboardingSceneDelegate: UIResponder, UIWindowSceneDelegate {
                 // Close the backing NSWindow directly via ObjC runtime.
                 // requestSceneSessionDestruction is async and does not reliably
                 // dismiss the Catalyst window. Closing the NSWindow triggers
-                // sceneDidEnterBackground which handles session cleanup.
+                // sceneDidDisconnect which nils the window reference.
                 Self.closeNSKeyWindow()
                 self?.completionObserver = nil
             }
@@ -605,12 +594,9 @@ class OnboardingSceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     #endif
 
-    func sceneDidEnterBackground(_ scene: UIScene) {
+    func sceneDidDisconnect(_ scene: UIScene) {
         #if targetEnvironment(macCatalyst)
-        if let session = (scene as? UIWindowScene)?.session {
-            UIApplication.shared.requestSceneSessionDestruction(session, options: nil)
-        }
-        AppLogger.app.info("Onboarding window closed")
+        AppLogger.app.info("Onboarding scene disconnected")
         #endif
     }
 }
