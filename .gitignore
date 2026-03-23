@@ -25,9 +25,10 @@ device-map*.md
 # Node.js
 node_modules/
 
-# Astro site
+# Astro site (not in npm workspaces — has its own lock file)
 site/dist/
 site/.astro/
+site/package-lock.json
 
 # AI coding tool directories
 .adal/
