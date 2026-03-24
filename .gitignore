@@ -60,3 +60,4 @@ site/package-lock.json
 .windsurf/
 .zencoder/
 .playwright-cli/
+openclaw/package-lock.json
