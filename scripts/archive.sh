@@ -36,12 +36,28 @@ fi
 ARCHIVE_PATH="$PROJECT_ROOT/.build/archives/$APP_NAME.xcarchive"
 EXPORT_PATH="$PROJECT_ROOT/.build/export"
 DO_UPLOAD=false
+DO_TESTFLIGHT=false
+TESTFLIGHT_NOTES=""
+TESTFLIGHT_NOTES_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --upload)
             DO_UPLOAD=true
             shift
+            ;;
+        --testflight)
+            DO_UPLOAD=true
+            DO_TESTFLIGHT=true
+            shift
+            ;;
+        --notes)
+            TESTFLIGHT_NOTES="$2"
+            shift 2
+            ;;
+        --notes-file)
+            TESTFLIGHT_NOTES_FILE="$2"
+            shift 2
             ;;
         --team-id)
             TEAM_ID="$2"
@@ -54,9 +70,12 @@ Usage: scripts/archive.sh [options]
 Creates an .xcarchive that can be distributed via Xcode Organizer.
 
 Options:
-  --upload      Export and upload to App Store Connect after archiving
-  --team-id ID  Apple Developer Team ID (or set HOMEKIT_TEAM_ID)
-  --help        Show this help
+  --upload           Export and upload to App Store Connect after archiving
+  --testflight       Upload + submit to external TestFlight (implies --upload)
+  --notes TEXT       TestFlight "What to Test" notes (with --testflight)
+  --notes-file FILE  Read TestFlight notes from file (with --testflight)
+  --team-id ID       Apple Developer Team ID (or set HOMEKIT_TEAM_ID)
+  --help             Show this help
 
 After archiving, open in Xcode Organizer to submit to TestFlight:
   open '.build/archives/HomeClaw.xcarchive'
@@ -82,7 +101,9 @@ echo ""
 
 # ─── Step 1: Generate Xcode project ─────────────────────────
 
-if $DO_UPLOAD; then
+if $DO_TESTFLIGHT; then
+    TOTAL_STEPS=5
+elif $DO_UPLOAD; then
     TOTAL_STEPS=4
 else
     TOTAL_STEPS=3
@@ -177,9 +198,35 @@ if $DO_UPLOAD; then
         -allowProvisioningUpdates
 
     printf "  %s\n" "$(green)"
-    echo ""
-    echo "$(bold "Done!") Build uploaded to App Store Connect."
-    echo "Check TestFlight status at: https://appstoreconnect.apple.com/apps/6759682551/testflight"
+
+    if $DO_TESTFLIGHT; then
+        echo "  [5/$TOTAL_STEPS] Submitting to external TestFlight..."
+
+        # Source secrets for ASC API credentials
+        if [[ -f "$HOME/.secrets.env" ]]; then
+            # shellcheck source=/dev/null
+            source "$HOME/.secrets.env"
+        fi
+
+        # Build notes arguments
+        NOTES_ARGS=()
+        if [[ -n "$TESTFLIGHT_NOTES_FILE" ]]; then
+            NOTES_ARGS+=(--notes-file "$TESTFLIGHT_NOTES_FILE")
+        elif [[ -n "$TESTFLIGHT_NOTES" ]]; then
+            NOTES_ARGS+=(--notes "$TESTFLIGHT_NOTES")
+        fi
+
+        python3 "$PROJECT_ROOT/scripts/asc-testflight.py" submit \
+            --build "$BUILD_NUMBER" --wait "${NOTES_ARGS[@]}"
+
+        printf "  %s\n" "$(green)"
+        echo ""
+        echo "$(bold "Done!") Build $BUILD_NUMBER uploaded and submitted to external TestFlight."
+    else
+        echo ""
+        echo "$(bold "Done!") Build uploaded to App Store Connect."
+        echo "Check TestFlight status at: https://appstoreconnect.apple.com/apps/6759682551/testflight"
+    fi
 else
     echo "$(bold "Done!") Open in Xcode Organizer to submit to TestFlight:"
     echo "  open '$ARCHIVE_PATH'"
